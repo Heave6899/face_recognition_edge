@@ -11,12 +11,10 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-
+import argparse
 from models.inception_resnet_v1 import InceptionResnetV1
 import build_custom_model
 
-# refer: https://towardsdatascience.com/finetune-a-facial-recognition-classifier-to-recognize-your-face-using-pytorch-d00a639d9a79
-# 100 epochs, 3min28s for 21 images
 
 def imshow(inp, title=None):
     """Imshow for Tensor."""
@@ -86,69 +84,70 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     return model, FT_losses, best_acc
 
 
-data_dir = './data/real_images' # the path for your dataset
-num_epochs = 3 # training epochs
-labels_dir = "./checkpoint/labels.json" # the path to save labels
-model_path = "./checkpoint/model_vggface2_best.pth" # the path to save best model weights
+
+if __name__ == "__main__":
 
 
-data_transforms = {
-    'train': transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'val': transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-}
+    parser = argparse.ArgumentParser(description='Train your customized face recognition model')
+    parser.add_argument('--data_dir', type=str, default="./data/test_me", help='the path of the dataset')
+    parser.add_argument('--num_epochs', type=int, default=100, help='training epochs')
+    args = parser.parse_args()
 
 
-image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=8, shuffle=True) for x in ['train', 'val']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train','val']}
-class_names = image_datasets['train'].classes
-print(f"Class names: {class_names}")
+    data_dir = args.data_dir
+    num_epochs = args.num_epochs
+    labels_dir = "./checkpoint/labels.json" # the path to save labels
+    model_path = "./checkpoint/model_vggface2_best.pth" # the path to save best model weights
 
 
-# Get a batch of training data
-inputs, classes = next(iter(dataloaders['train']))
-# Make a grid from batch
-out = utils.make_grid(inputs)
-imshow(out, title=[class_names[x] for x in classes])
+    data_transforms = {
+        'train': transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ]),
+        'val': transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ]),
+    }
+
+    image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
+    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=8, shuffle=True) for x in ['train', 'val']}
+    dataset_sizes = {x: len(image_datasets[x]) for x in ['train','val']}
+    class_names = image_datasets['train'].classes
+    print(f"Class names: {class_names}")
 
 
-# device = torch.device('cuda:0')
-device = torch.device('cpu')
-model_ft = build_custom_model.build_model(len(class_names))
-model_ft = model_ft.to(device)
-print('Running on device: {}'.format(device))
+    # Get a batch of training data
+    inputs, classes = next(iter(dataloaders['train']))
+    # Make a grid from batch
+    out = utils.make_grid(inputs)
+    imshow(out, title=[class_names[x] for x in classes])
 
 
-criterion = nn.CrossEntropyLoss()
-optimizer_ft = optim.SGD(model_ft.parameters(), lr=1e-2, momentum=0.9)
-# Decay LR by a factor of *gamma* every *step_size* epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
-
-# train and evaluate
-model_ft, FT_losses, best_acc = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=num_epochs)
-plt.figure(figsize=(10,5))
-plt.title("FRT Loss During Training")
-plt.plot(FT_losses, label="FT loss")
-plt.xlabel("iterations")
-plt.ylabel("Loss")
-plt.legend()
-plt.show()
-# plt.savefig("loss.png")
+    # device = torch.device('cuda:0')
+    device = torch.device('cpu')
+    model_ft = build_custom_model.build_model(len(class_names))
+    model_ft = model_ft.to(device)
+    print('Running on device: {}'.format(device))
 
 
-# save labels and best model weights to checkpoint folder
-# with open(labels_dir, 'w') as outfile:
-#     json.dump(class_names, outfile)
+    criterion = nn.CrossEntropyLoss()
+    optimizer_ft = optim.SGD(model_ft.parameters(), lr=1e-2, momentum=0.9)
+    # Decay LR by a factor of *gamma* every *step_size* epochs
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-# state = {
-#     'model': model_ft.state_dict(),
-#     'best_acc': best_acc,
-# }
-# torch.save(state, model_path)
+
+    # train and evaluate
+    model_ft, FT_losses, best_acc = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=num_epochs)
+
+    
+    # save labels and best model weights to checkpoint folder
+    with open(labels_dir, 'w') as outfile:
+        json.dump(class_names, outfile)
+    state = {
+        'model': model_ft.state_dict(),
+        'best_acc': best_acc,
+    }
+    torch.save(state, model_path)
