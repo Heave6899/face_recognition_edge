@@ -21,10 +21,10 @@ import os
 import subprocess
 input_bucket = "inputvideoscc"
 output_bucket = "outputvideoscc"
-credentials = {
-    "accessKeyId": 'AKIASLJLX3PWWWLBHDGS',
-    "secretAccessKey": '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'
-}
+# credentials = {
+#     "accessKeyId": '',
+#     "secretAccessKey": ''
+# }
 import ffmpeg
 
 def face_recognition_handler(event, context):

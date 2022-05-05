@@ -7,8 +7,8 @@ import subprocess
 input_bucket = "inputvideoscc"
 output_bucket = "outputvideoscc"
 credentials = {
-    "accessKeyId": 'AKIASLJLX3PWWWLBHDGS',
-    "secretAccessKey": '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'
+    "accessKeyId": '',
+    "secretAccessKey": ''
 }
 
 # Function to read the 'encoding' file
