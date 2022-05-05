@@ -7,8 +7,8 @@ import subprocess
 input_bucket = "inputvideoscc"
 output_bucket = "outputvideoscc"
 credentials = {
-    "accessKeyId": 'AKIASLJLX3PW7QJ4F5OU',
-    "secretAccessKey": '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'
+    "accessKeyId": 'AKIASLJLX3PWWWLBHDGS',
+    "secretAccessKey": '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'
 }
 
 # Function to read the 'encoding' file
@@ -27,9 +27,8 @@ def face_recognition_handler(event, context):
     print("Lambda time remaining in MS:", context.get_remaining_time_in_millis())
     
     client = boto3.client('s3',aws_access_key_id=credentials['accessKeyId'], aws_secret_access_key=credentials['secretAccessKey'])
-    client.download_file(event['Records'][0]['s3']['bucket']['name'], event['Records'][0]['s3']['object']['key'], event['Records'][0]['s3']['object']['key'])
-    print(subprocess.check_output('ls').decode('utf-8'))
-    s = subprocess.check_output(['ffprobe', event['Records'][0]['s3']['object']['key'] ,'-count_frames', '-show_entries', 'stream=nb_read_frames,avg_frame_rate,r_frame_rate']).decode('utf-8')
+    client.download_file(event['Records'][0]['s3']['bucket']['name'], event['Records'][0]['s3']['object']['key'], '/tmp/' + event['Records'][0]['s3']['object']['key'])
+    s = subprocess.check_output(['ffprobe', '/tmp/' + event['Records'][0]['s3']['object']['key'] ,'-count_frames', '-show_entries', 'stream=nb_read_frames,avg_frame_rate,r_frame_rate']).decode('utf-8')
     rates = [i.split('=') for i in s.split(  )]
     print(rates)
     duration = int(rates[3][1])/int(rates[2][1].split('/')[0])
@@ -41,10 +40,9 @@ def face_recognition_handler(event, context):
 
 def extract_frames(file_name, duration, frames):
     print(file_name, duration, frames)
-    print(subprocess.check_output(['ffmpeg','-i',file_name,'-r','2','out%03d.jpg']))
-    print(subprocess.check_output('ls'))
-    result = subprocess.check_output(['python', 'eval_face_recognition.py','--img_path','./out001.jpg']).decode('utf-8')
+    print(subprocess.check_output(['ffmpeg','-i', '/tmp/' + file_name,'-r','2','/tmp/out%03d.jpg']))
+    result = subprocess.check_output(['python', 'eval_face_recognition.py','--img_path','/tmp/out001.jpg']).decode('utf-8')
     print(result)
-    print(subprocess.check_output(['rm','-rf','out*']))
-    print(subprocess.check_output(['rm','-rf','video_*']))
+    print(subprocess.check_output(['rm','-rf','/tmp/out*']))
+    print(subprocess.check_output(['rm','-rf','/tmp/video_*']))
     return result
