@@ -28,7 +28,7 @@ WORKDIR ${FUNCTION_DIR}
 COPY --from=build-image ${FUNCTION_DIR} ${FUNCTION_DIR}
 # ADD https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie /usr/bin/aws-lambda-rie
 # RUN chmod 755 /usr/bin/aws-lambda-rie
-RUN apt-get install -y ffmpeg
+# RUN apt-get install -y ffmpeg
 
 COPY ./checkpoint ${FUNCTION_DIR}/checkpoint
 COPY ./build_custom_model.py ${FUNCTION_DIR}/build_custom_model.py

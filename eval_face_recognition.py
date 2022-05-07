@@ -11,33 +11,32 @@ from urllib.request import urlopen
 from PIL import Image
 import json
 import numpy as np
-import argparse
 import build_custom_model
-import boto3
-import botocore
-import pickle
+import pickle 
 import time
-import os
-import subprocess
-input_bucket = "inputvideoscc"
-output_bucket = "outputvideoscc"
-# credentials = {
-#     "accessKeyId": '',
-#     "secretAccessKey": ''
-# }
-import ffmpeg
+import os 
+import base64
+import boto3
+from botocore.exceptions import ClientError
+from decimal import Decimal
+# from boto3.dynamodb.conditions import Key
+
+credentials = {
+    "accessKeyId": 'AKIASLJLX3PWWWLBHDGS',
+    "secretAccessKey": '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'
+}
+
+def default(obj):
+    if isinstance(obj, Decimal):
+        return str(obj)
+    raise TypeError("Object of type '%s' is not JSON serializable" % type(obj).__name__)
 
 def face_recognition_handler(event, context):
-     client = boto3.client('s3',aws_access_key_id=credentials['accessKeyId'], aws_secret_access_key=credentials['secretAccessKey'])
-     client.download_file(event['Records'][0]['s3']['bucket']['name'], event['Records'][0]['s3']['object']['key'], '/tmp/' + event['Records'][0]['s3']['object']['key'])
-     # parser = argparse.ArgumentParser(description='Evaluate your customized face recognition model')
-     # parser.add_argument('--img_path', type=str, default="./data/test_me/val/angelina_jolie/1.png", help='the path of the dataset')
-     # args = parser.parse_args()
-     # img_path = args.img_path
+     print('this is even: ', event)
      labels_dir = "./checkpoint/labels.json"
      model_path = "./checkpoint/model_vggface2_best.pth"
 
-
+     
      # read labels
      with open(labels_dir) as f:
           labels = json.load(f)
@@ -50,9 +49,15 @@ def face_recognition_handler(event, context):
      model.eval()
      print(f"Best accuracy of the loaded model: {torch.load(model_path, map_location=torch.device('cpu'))['best_acc']}")
 
-     #extract images from video:
-     input = ffmpeg.input('/tmp/'+ event['Records'][0]['s3']['object']['key'])
-     ffmpeg.input('/tmp/'+ event['Records'][0]['s3']['object']['key']).filter('scale', 160, -1).output('/tmp/image01.jpg', vframes=1).run()
+     #extract image from url:
+     # print(event)
+     image = json.loads(event.get("Records")[0].get('body'))['responsePayload']['encoded']
+     name = json.loads(event.get("Records")[0].get('body'))['responsePayload']['name']
+
+     fh = open("/tmp/image01.jpg", "wb+")
+     fh.write(base64.b64decode(image))
+     fh.close()
+
      img_path = '/tmp/image01.jpg'
      img = Image.open(img_path)
      img_tensor = transforms.ToTensor()(img).unsqueeze_(0).to(device)
@@ -74,21 +79,29 @@ def face_recognition_handler(event, context):
      else:
           result = 1
 
+     sqs_client = boto3.client("sqs", region_name="us-east-1")
+     
+     # client_dynamodb = boto3.resource('dynamodb',aws_access_key_id=credentials['accessKeyId'], aws_secret_access_key=credentials['secretAccessKey'], region_name="us-east-1")
+     # table = client_dynamodb.Table('AcademicData')
+     # response = table.query(KeyConditionExpression=Key(result))
 
-     client_dynamodb = boto3.resource('dynamodb',aws_access_key_id=credentials['accessKeyId'], aws_secret_access_key=credentials['secretAccessKey'], region_name="us-east-1")
-     table = client_dynamodb.Table('AcademicData')
-     response = table.scan()
+     # data = response['Items']
+     # print("this is data: ", data)
 
-     data = response['Items']
-     print("this is data: ", data)
-
-     final_result = []
-     for each in data:
-          if(each.get("id") == result):
-               final_result.append(each)
-
-
-     print("Response from db: ", final_result[0])
+     # final_result = []
+     # for each in data:
+     #      if(each.get("id") == result):
+     #           final_result.append(each)
 
 
-     return(final_result[0])
+     # print("Response from db: ", final_result[0])
+
+     try:
+        response = sqs_client.send_message(QueueUrl="https://sqs.us-east-1.amazonaws.com/161689885677/sqs-2",
+                                           MessageAttributes={},
+          MessageBody=json.dumps({'final_result': result, 'name': name}, default=default)
+     )
+     except ClientError as e:
+          print(e)
+
+     return {'final_result': result, 'name': name}

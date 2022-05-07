@@ -113,7 +113,7 @@ if __name__ == "__main__":
     }
 
     image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'val']}
-    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=8, shuffle=True) for x in ['train', 'val']}
+    dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=32, shuffle=True) for x in ['train', 'val']}
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train','val']}
     class_names = image_datasets['train'].classes
     print(f"Class names: {class_names}")
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
 
     criterion = nn.CrossEntropyLoss()
-    optimizer_ft = optim.SGD(model_ft.parameters(), lr=1e-2, momentum=0.9)
+    optimizer_ft = optim.Adam(model_ft.parameters(), lr=1e-2, momentum=0.9)
     # Decay LR by a factor of *gamma* every *step_size* epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
